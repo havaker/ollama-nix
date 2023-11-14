@@ -24,7 +24,7 @@
 
       overlays.llama-cpp-with-cuda-and-shared-libs = final: prev: {
         llama-cpp = prev.llama-cpp.overrideAttrs (old: {
-          buildInputs = old.buildInputs ++ (with prev.cudaPackages; [ libcublas cudatoolkit ]);
+          buildInputs = old.buildInputs ++ (with prev.cudaPackages; [ libcublas cudatoolkit pkgs.linuxPackages.nvidia_x11 ] );
           cmakeFlags = [
             "-DLLAMA_BUILD_SERVER=ON"
             "-DBUILD_SHARED_LIBS=ON"
