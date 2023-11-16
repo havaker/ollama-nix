@@ -24,7 +24,7 @@
 
       overlays.llama-cpp-with-cuda-and-shared-libs = final: prev: {
         llama-cpp = prev.llama-cpp.overrideAttrs (old: {
-          buildInputs = old.buildInputs ++ (with prev.cudaPackages; [ libcublas cudatoolkit pkgs.linuxPackages.nvidia_x11 ] );
+          buildInputs = old.buildInputs ++ (with prev.cudaPackages; [ libcublas cudatoolkit ]);
           cmakeFlags = [
             "-DLLAMA_BUILD_SERVER=ON"
             "-DBUILD_SHARED_LIBS=ON"
@@ -50,6 +50,16 @@
             done
 
             runHook postInstall
+          '';
+        });
+
+        ollama = prev.ollama.overrideAttrs (old: {
+          patches = old.patches ++ [ ./set-nvidia-smi-path.patch ];
+          postPatch = ''
+            substituteInPlace llm/llama.go \
+              --subst-var-by llamaCppServer "${final.llama-cpp}/bin/llama-cpp-server"
+            substituteInPlace llm/llama.go \
+              --subst-var-by nvidia-smi "${prev.linuxPackages.nvidia_x11}/bin/nvidia-smi"
           '';
         });
       };

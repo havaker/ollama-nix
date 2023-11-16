@@ -1,0 +1,13 @@
+diff --git a/llm/llama.go b/llm/llama.go
+index d885939..94af5d3 100644
+--- a/llm/llama.go
++++ b/llm/llama.go
+@@ -231,7 +231,7 @@ var (
+ 
+ // CheckVRAM returns the free VRAM in bytes on Linux machines with NVIDIA GPUs
+ func CheckVRAM() (int64, error) {
+-	cmd := exec.Command("nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits")
++	cmd := exec.Command("@nvidia-smi@", "--query-gpu=memory.free", "--format=csv,noheader,nounits")
+ 	var stdout bytes.Buffer
+ 	cmd.Stdout = &stdout
+ 	err := cmd.Run()
