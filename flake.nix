@@ -10,9 +10,7 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
-        config.cudaSupport = true;
         config.allowUnfree = true;
-        overlays = [ self.overlays.llama-cpp-with-cuda-and-shared-libs ];
       };
     in
     {
@@ -22,9 +20,11 @@
         ollama = self.packages.${system}.default;
       };
 
-      overlays.llama-cpp-with-cuda-and-shared-libs = final: prev: {
-        llama-cpp = prev.llama-cpp.overrideAttrs (old: {
-          buildInputs = old.buildInputs ++ (with prev.cudaPackages; [ libcublas cudatoolkit ]);
+      packages.${system} = rec {
+        llama-cpp = pkgs.llama-cpp.overrideAttrs (old: {
+          buildInputs = old.buildInputs ++ (
+            with pkgs.cudaPackages; [ libcublas cudatoolkit ]
+          );
           cmakeFlags = [
             "-DLLAMA_BUILD_SERVER=ON"
             "-DBUILD_SHARED_LIBS=ON"
@@ -52,36 +52,40 @@
             runHook postInstall
           '';
         });
-        ollama = prev.buildGoModule rec {
-          inherit (prev.ollama) pname ldflags meta patches;
 
-          version = "0.1.10";
+        ollama =
+          let
+            llama-cpp = self.packages.${system}.llama-cpp;
+          in
+          pkgs.buildGoModule rec {
+            inherit (pkgs.ollama) pname meta patches;
 
-          src = prev.fetchFromGitHub {
-            owner = "jmorganca";
-            repo = "ollama";
-            rev = "v${version}";
-            hash = "sha256-1MoRoKN8/oPGW5TL40vh9h0PMEbAuG5YmuNHPvNtHgA=";
+            version = "0.1.10";
+
+            src = pkgs.fetchFromGitHub {
+              owner = "jmorganca";
+              repo = "ollama";
+              rev = "v${version}";
+              hash = "sha256-1MoRoKN8/oPGW5TL40vh9h0PMEbAuG5YmuNHPvNtHgA=";
+            };
+
+            postPatch = ''
+              substituteInPlace llm/llama.go \
+                --subst-var-by llamaCppServer "${llama-cpp}/bin/llama-cpp-server"
+            '';
+
+            # Inheriting ldflags from pkgs.ollama will inherit the old version setting.
+            ldflags = [
+              "-s"
+              "-w"
+              "-X=github.com/jmorganca/ollama/version.Version=${version}"
+              "-X=github.com/jmorganca/ollama/server.mode=release"
+            ];
+
+            vendorHash = "sha256-9Ml5YvK5grSOp/A8AGiWqVE1agKP13uWIZP9xG2gf2o=";
           };
 
-          postPatch = ''
-            substituteInPlace llm/llama.go \
-              --subst-var-by llamaCppServer "${final.llama-cpp}/bin/llama-cpp-server"
-          '';
-
-          vendorHash = "sha256-9Ml5YvK5grSOp/A8AGiWqVE1agKP13uWIZP9xG2gf2o=";
-        };
-      };
-
-      packages.${system} = {
-        default = pkgs.ollama;
-        llama-cpp = pkgs.llama-cpp;
-      };
-
-      devShells.x86_64-linux.default = pkgs.mkShell {
-        buildInputs = [
-          self.packages.${system}.default
-        ];
+        default = ollama;
       };
     };
 }
