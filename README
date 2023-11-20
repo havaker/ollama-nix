@@ -1,4 +1,6 @@
 As of 12 Nov 2023, ollama in nixpkgs fails to utilize CUDA-enabled devices.
 This repo contains a nix flake that defines ollama with CUDA support.
 
+# Make sure you have nvidia-smi available in the PATH before running the
+# following command.
 nix run github:havaker/ollama-nix

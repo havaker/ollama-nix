@@ -53,7 +53,7 @@
           '';
         });
         ollama = prev.buildGoModule rec {
-          inherit (prev.ollama) pname ldflags meta;
+          inherit (prev.ollama) pname ldflags meta patches;
 
           version = "0.1.10";
 
@@ -64,12 +64,9 @@
             hash = "sha256-1MoRoKN8/oPGW5TL40vh9h0PMEbAuG5YmuNHPvNtHgA=";
           };
 
-          patches = prev.ollama.patches ++ [ ./set-nvidia-smi-path.patch ];
           postPatch = ''
             substituteInPlace llm/llama.go \
               --subst-var-by llamaCppServer "${final.llama-cpp}/bin/llama-cpp-server"
-            substituteInPlace llm/llama.go \
-              --subst-var-by nvidia-smi "${prev.linuxPackages.nvidia_x11}/bin/nvidia-smi"
           '';
 
           vendorHash = "sha256-9Ml5YvK5grSOp/A8AGiWqVE1agKP13uWIZP9xG2gf2o=";
