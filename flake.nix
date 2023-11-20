@@ -87,5 +87,68 @@
 
         default = ollama;
       };
+
+      nixosModules.default = { config, lib, ... }:
+        let
+          ollamaPackage = self.packages.${system}.ollama;
+        in
+        with lib; {
+          options = {
+            services.ollama.enable = mkEnableOption "Enable Ollama LLM runner service";
+          };
+          config = mkIf config.services.ollama.enable {
+            assertions = [
+              {
+                assertion = config.nixpkgs.system == system;
+                message = "Only ${system} is supported by this flake.";
+              }
+              {
+                assertion = config.boot.kernelPackages ? nvidia_x11;
+                message = "Nvidia driver has to be present.";
+              }
+            ];
+
+            # Add the ollama system user for the system-wide service.
+            users.users.ollama = {
+              isSystemUser = true;
+              group = "ollama";
+
+              # All the requested LLM weights are stored in this directory.
+              createHome = true;
+              home = "/var/lib/ollama";
+            };
+            users.groups.ollama = { };
+
+            # Make ollama package available system-wide.
+            environment.systemPackages = [ ollamaPackage ];
+
+            # Ollama server listens on http://127.0.0.1:49977, every user with network
+            # access is able to access it and use to run chosen LLM. It does not make
+            # sense to have a separate `ollama serve` instance for every user (there is
+            # no data shared, only weights of the LLM), so it is reasonable to run it as
+            # a system-wide service.
+            systemd.services.ollama = {
+              description = "Service for running LLMs";
+
+              wantedBy = [ "multi-user.target" ];
+              after = [ "network.target" ];
+
+              path = [ config.boot.kernelPackages.nvidia_x11.bin ];
+
+              serviceConfig = {
+                Type = "simple";
+
+                User = "ollama";
+                Group = "ollama";
+
+                ExecStart = "${ollamaPackage}/bin/ollama serve";
+
+                Restart = "always";
+                RestartSec = 3;
+              };
+            };
+          };
+        };
+
     };
 }
