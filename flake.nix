@@ -137,7 +137,7 @@
               wantedBy = [ "multi-user.target" ];
               after = [ "network.target" ];
 
-              path = [ config.boot.kernelPackages.nvidia_x11.bin ];
+              path = [ config.hardware.nvidia.package.bin ];
 
               serviceConfig = {
                 Type = "simple";
