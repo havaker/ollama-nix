@@ -21,7 +21,10 @@
       };
 
       packages.${system} = rec {
-        llama-cpp = pkgs.llama-cpp.overrideAttrs (old: {
+        llama-cpp = (
+          # cudatoolkit does not like gcc12.
+          pkgs.llama-cpp.override { stdenv = pkgs.gcc11Stdenv; }
+        ).overrideAttrs (old: {
           buildInputs = old.buildInputs ++ (
             with pkgs.cudaPackages; [ libcublas cudatoolkit ]
           );
@@ -60,18 +63,19 @@
           pkgs.buildGoModule rec {
             inherit (pkgs.ollama) pname meta patches;
 
-            version = "0.1.10";
+            version = "0.1.17";
 
             src = pkgs.fetchFromGitHub {
               owner = "jmorganca";
               repo = "ollama";
               rev = "v${version}";
-              hash = "sha256-1MoRoKN8/oPGW5TL40vh9h0PMEbAuG5YmuNHPvNtHgA=";
+              hash = "sha256-eXukNn9Lu1hF19GEi7S7a96qktsjnmXCUp38gw+3MzY=";
             };
 
             postPatch = ''
               substituteInPlace llm/llama.go \
                 --subst-var-by llamaCppServer "${llama-cpp}/bin/llama-cpp-server"
+              substituteInPlace server/routes_test.go --replace "0.0.0" "${version}"
             '';
 
             # Inheriting ldflags from pkgs.ollama will inherit the old version setting.
@@ -82,7 +86,7 @@
               "-X=github.com/jmorganca/ollama/server.mode=release"
             ];
 
-            vendorHash = "sha256-9Ml5YvK5grSOp/A8AGiWqVE1agKP13uWIZP9xG2gf2o=";
+            vendorHash = "sha256-yGdCsTJtvdwHw21v0Ot6I8gxtccAvNzZyRu1T0vaius=";
           };
 
         default = ollama;
