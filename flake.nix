@@ -1,5 +1,6 @@
 # Copyright (C) 2023-present:
 #    Michał Sala <fmxloexp@msala.waw.pl>
+#    Jay Mundrawala <jay@thechamberofunderstanding.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 {
   description = "Ollama with proper CUDA support enabled";
@@ -98,12 +99,31 @@
       nixosModules.default = { config, lib, ... }:
         let
           ollamaPackage = self.packages.${system}.ollama;
+          cfg = config.services.ollama;
         in
         with lib; {
           options = {
-            services.ollama.enable = mkEnableOption "Enable Ollama LLM runner service";
+            services.ollama = {
+              enable = mkEnableOption "Enable Ollama LLM runner service";
+              openFirewall = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+                description = "Whether to open the port in the firewall";
+              };
+              port = lib.mkOption {
+                type = lib.types.int;
+                default = 11434;
+                description = "The port to listen on";
+              };
+              host = lib.mkOption {
+                type = lib.types.str;
+                default = "127.0.0.1";
+                description = "The host to listen on";
+              };
+            };
+
           };
-          config = mkIf config.services.ollama.enable {
+          config = mkIf cfg.enable {
             assertions = [
               {
                 assertion = config.nixpkgs.system == system;
@@ -129,7 +149,7 @@
             # Make ollama package available system-wide.
             environment.systemPackages = [ ollamaPackage ];
 
-            # Ollama server listens on http://127.0.0.1:49977, every user with network
+            # Ollama server listens on http://127.0.0.1:11434, every user with network
             # access is able to access it and use to run chosen LLM. It does not make
             # sense to have a separate `ollama serve` instance for every user (there is
             # no data shared, only weights of the LLM), so it is reasonable to run it as
@@ -142,6 +162,10 @@
 
               path = [ config.hardware.nvidia.package.bin ];
 
+              environment = {
+                OLLAMA_HOST = "${cfg.host}:${toString cfg.port}";
+              };
+
               serviceConfig = {
                 Type = "simple";
 
@@ -153,6 +177,10 @@
                 Restart = "always";
                 RestartSec = 3;
               };
+            };
+
+            networking.firewall = lib.mkIf cfg.openFirewall {
+              allowedTCPPorts = [ cfg.port ];
             };
           };
         };
