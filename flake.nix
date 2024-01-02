@@ -1,3 +1,6 @@
+# Copyright (C) 2023-present:
+#    Michał Sala <fmxloexp@msala.waw.pl>
+# SPDX-License-Identifier: AGPL-3.0-or-later
 {
   description = "Ollama with proper CUDA support enabled";
 
